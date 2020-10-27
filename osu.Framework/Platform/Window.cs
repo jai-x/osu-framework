@@ -242,6 +242,11 @@ namespace osu.Framework.Platform
         /// </summary>
         public event Action<string> TextInsert;
 
+        /// <summary>
+        /// Invoked when the user submits a text composition via IME.
+        /// </summary>
+        public event Action<string> TextComposition;
+
         #endregion
 
         #region Event Invocation
@@ -269,6 +274,7 @@ namespace osu.Framework.Platform
         protected virtual void OnJoystickButtonUp(JoystickButton button) => JoystickButtonUp?.Invoke(button);
         protected virtual void OnDragDrop(string file) => DragDrop?.Invoke(file);
         protected virtual void OnTextInsert(string text) => TextInsert?.Invoke(text);
+        protected virtual void OnTextComposition(string text) => TextComposition?.Invoke(text);
 
         #endregion
 
@@ -363,6 +369,8 @@ namespace osu.Framework.Platform
             WindowBackend.MouseMove += OnMouseMove;
             WindowBackend.MouseWheel += OnMouseWheel;
             WindowBackend.DragDrop += OnDragDrop;
+            WindowBackend.TextInsert += OnTextInsert;
+            WindowBackend.TextComposition += OnTextComposition;
 
             WindowBackend.DisplayChanged += d => CurrentDisplay.Value = d;
 

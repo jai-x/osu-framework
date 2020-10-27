@@ -60,6 +60,7 @@ namespace osu.Framework.Platform
         public event Action<string> DragDrop;
         public event Action<Display> DisplayChanged;
         public event Action<string> TextInsert;
+        public event Action<string> TextComposition;
 
         public abstract void Create();
 
@@ -98,6 +99,7 @@ namespace osu.Framework.Platform
         protected virtual void OnDragDrop(string file) => DragDrop?.Invoke(file);
         protected virtual void OnDisplayChanged(Display display) => DisplayChanged?.Invoke(display);
         protected virtual void OnTextInsert(string text) => TextInsert?.Invoke(text);
+        protected virtual void OnTextComposition(string text) => TextComposition?.Invoke(text);
 
         #endregion
     }

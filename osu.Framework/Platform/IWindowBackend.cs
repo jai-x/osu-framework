@@ -220,6 +220,11 @@ namespace osu.Framework.Platform
         /// </summary>
         event Action<string> TextInsert;
 
+        /// <summary>
+        /// Invoked when the user submits a text composition via IME.
+        /// </summary>
+        event Action<string> TextComposition;
+
         #endregion
 
         #region Methods
