@@ -215,6 +215,11 @@ namespace osu.Framework.Platform
         /// </summary>
         event Action<Display> DisplayChanged;
 
+        /// <summary>
+        /// Invoked when the user inserts text via typing or IME.
+        /// </summary>
+        event Action<string> TextInsert;
+
         #endregion
 
         #region Methods

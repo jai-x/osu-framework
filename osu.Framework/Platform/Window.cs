@@ -237,6 +237,11 @@ namespace osu.Framework.Platform
         /// </summary>
         public event Action<string> DragDrop;
 
+        /// <summary>
+        /// Invoked when the user inserts text via typing or IME.
+        /// </summary>
+        public event Action<string> TextInsert;
+
         #endregion
 
         #region Event Invocation
@@ -263,6 +268,7 @@ namespace osu.Framework.Platform
         protected virtual void OnJoystickButtonDown(JoystickButton button) => JoystickButtonDown?.Invoke(button);
         protected virtual void OnJoystickButtonUp(JoystickButton button) => JoystickButtonUp?.Invoke(button);
         protected virtual void OnDragDrop(string file) => DragDrop?.Invoke(file);
+        protected virtual void OnTextInsert(string text) => TextInsert?.Invoke(text);
 
         #endregion
 

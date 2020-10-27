@@ -59,6 +59,7 @@ namespace osu.Framework.Platform
         public event Action<JoystickButton> JoystickButtonUp;
         public event Action<string> DragDrop;
         public event Action<Display> DisplayChanged;
+        public event Action<string> TextInsert;
 
         public abstract void Create();
 
@@ -96,6 +97,7 @@ namespace osu.Framework.Platform
         protected virtual void OnJoystickButtonUp(JoystickButton button) => JoystickButtonUp?.Invoke(button);
         protected virtual void OnDragDrop(string file) => DragDrop?.Invoke(file);
         protected virtual void OnDisplayChanged(Display display) => DisplayChanged?.Invoke(display);
+        protected virtual void OnTextInsert(string text) => TextInsert?.Invoke(text);
 
         #endregion
     }
