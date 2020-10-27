@@ -751,17 +751,15 @@ namespace osu.Framework.Platform.Sdl
         private unsafe void handleTextInputEvent(SDL.SDL_TextInputEvent evtText)
         {
             var ptr = new IntPtr(evtText.text);
-            if (ptr == IntPtr.Zero)
-                return;
-
-            string text = Marshal.PtrToStringUTF8(ptr) ?? "";
-
-            foreach (char c in text)
-                ScheduleEvent(() => OnKeyTyped(c));
+            string text = Marshal.PtrToStringUTF8(ptr) ?? String.Empty;
+            ScheduleEvent(() => OnTextInsert(text));
         }
 
-        private void handleTextEditingEvent(SDL.SDL_TextEditingEvent evtEdit)
+        private unsafe void handleTextEditingEvent(SDL.SDL_TextEditingEvent evtEdit)
         {
+            var ptr = new IntPtr(evtEdit.text);
+            string text = Marshal.PtrToStringUTF8(ptr) ?? String.Empty;
+            ScheduleEvent(() => OnTextComposition(text));
         }
 
         private void handleKeyboardEvent(SDL.SDL_KeyboardEvent evtKey)
