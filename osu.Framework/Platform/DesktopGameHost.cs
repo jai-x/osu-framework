@@ -14,6 +14,7 @@ using osu.Framework.Input.Handlers.Joystick;
 using osu.Framework.Input.Handlers.Keyboard;
 using osu.Framework.Input.Handlers.Midi;
 using osu.Framework.Input.Handlers.Mouse;
+using osu.Framework.Platform.Sdl;
 using osuTK;
 
 namespace osu.Framework.Platform
@@ -91,7 +92,16 @@ namespace osu.Framework.Platform
             UseShellExecute = true //see https://github.com/dotnet/corefx/issues/10361
         });
 
-        public override ITextInputSource GetTextInput() => Window == null ? null : new GameWindowTextInput(Window);
+        public override ITextInputSource GetTextInput()
+        {
+            if (Window == null)
+                return null;
+
+            if (UseSdl)
+                return new Sdl2TextInput(Window);
+            else
+                return new GameWindowTextInput(Window);
+        }
 
         protected override IEnumerable<InputHandler> CreateAvailableInputHandlers()
         {
