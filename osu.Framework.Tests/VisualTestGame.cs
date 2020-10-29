@@ -7,6 +7,9 @@ using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Platform;
 using osu.Framework.Testing;
+using osu.Framework.IO.Stores;
+
+using osu.Game.Resources; // for CJK fonts
 
 namespace osu.Framework.Tests
 {
@@ -15,6 +18,11 @@ namespace osu.Framework.Tests
         [BackgroundDependencyLoader]
         private void load()
         {
+            Resources.AddStore(new DllResourceStore(OsuResources.ResourceAssembly));
+
+            AddFont(Resources, @"Fonts/Noto-Basic");
+            AddFont(Resources, @"Fonts/Noto-CJK-Basic");
+
             Child = new SafeAreaContainer
             {
                 RelativeSizeAxes = Axes.Both,
