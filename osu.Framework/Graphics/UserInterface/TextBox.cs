@@ -17,6 +17,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Development;
 using osu.Framework.Platform;
+using osu.Framework.Platform.Sdl;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Timing;
@@ -76,7 +77,8 @@ namespace osu.Framework.Graphics.UserInterface
 
         public override bool CanBeTabbedTo => !ReadOnly;
 
-        private ITextInputSource textInput;
+        // Hardcoding text input type for proof of concept
+        private Sdl2TextInput textInput;
 
         private Clipboard clipboard;
 
@@ -128,22 +130,15 @@ namespace osu.Framework.Graphics.UserInterface
         [BackgroundDependencyLoader]
         private void load(GameHost host)
         {
-            textInput = host.GetTextInput();
+            // Hard casting for proof of concept, will crash when not using SDL
+            textInput = (Sdl2TextInput)host.GetTextInput();
             clipboard = host.GetClipboard();
 
-            if (textInput != null)
-            {
-                textInput.OnNewImeComposition += s =>
-                {
-                    textUpdateScheduler.Add(() => onImeComposition(s));
-                    cursorAndLayout.Invalidate();
-                };
-                textInput.OnNewImeResult += s =>
-                {
-                    textUpdateScheduler.Add(onImeResult);
-                    cursorAndLayout.Invalidate();
-                };
-            }
+            if (textInput == null)
+                return;
+
+            textInput.TextInsert += handleTextInsert;
+            textInput.TextComposition += handleTextComposition;
         }
 
         public virtual bool OnPressed(PlatformAction action)
@@ -157,6 +152,9 @@ namespace osu.Framework.Graphics.UserInterface
                 action.ActionMethod == PlatformActionMethod.Move &&
                 (action.ActionType == PlatformActionType.CharNext || action.ActionType == PlatformActionType.CharPrevious))
                 return false;
+
+            if (compositionActive)
+                Schedule(resetComposition);
 
             switch (action.ActionType)
             {
@@ -398,7 +396,8 @@ namespace osu.Framework.Graphics.UserInterface
 
         private void moveSelection(int offset, bool expand)
         {
-            if (textInput?.ImeActive == true) return;
+            if (compositionActive)
+                return;
 
             int oldStart = selectionStart;
             int oldEnd = selectionEnd;
@@ -659,56 +658,16 @@ namespace osu.Framework.Graphics.UserInterface
 
         public string SelectedText => selectionLength > 0 ? Text.Substring(selectionLeft, selectionLength) : string.Empty;
 
-        private bool consumingText;
-
-        /// <summary>
-        /// Begin consuming text from an <see cref="ITextInputSource"/>.
-        /// Continues to consume every <see cref="Drawable.Update"/> loop until <see cref="EndConsumingText"/> is called.
-        /// </summary>
-        protected void BeginConsumingText()
-        {
-            consumingText = true;
-            Schedule(consumePendingText);
-        }
-
-        /// <summary>
-        /// Stops consuming text from an <see cref="ITextInputSource"/>.
-        /// </summary>
-        protected void EndConsumingText()
-        {
-            consumingText = false;
-        }
-
-        /// <summary>
-        /// Consumes any pending characters and adds them to the textbox if not <see cref="ReadOnly"/>.
-        /// </summary>
-        /// <returns>Whether any characters were consumed.</returns>
-        private void consumePendingText()
-        {
-            string pendingText = textInput?.GetPendingText();
-
-            if (!string.IsNullOrEmpty(pendingText) && !ReadOnly)
-            {
-                InsertString(pendingText);
-                OnUserTextAdded(pendingText);
-            }
-
-            if (consumingText)
-                Schedule(consumePendingText);
-        }
 
         #region Input event handling
 
         protected override bool OnKeyDown(KeyDownEvent e)
         {
-            if (textInput?.ImeActive == true || ReadOnly) return true;
+            if (ReadOnly)
+                return true;
 
-            if (e.ControlPressed || e.SuperPressed || e.AltPressed)
-                return false;
-
-            // we only care about keys which can result in text output.
-            if (keyProducesCharacter(e.Key))
-                BeginConsumingText();
+            if (compositionActive)
+                return true;
 
             switch (e.Key)
             {
@@ -722,10 +681,8 @@ namespace osu.Framework.Graphics.UserInterface
                     return true;
             }
 
-            return base.OnKeyDown(e) || consumingText;
+            return base.OnKeyDown(e);
         }
-
-        private bool keyProducesCharacter(Key key) => (key == Key.Space || key >= Key.Keypad0 && key <= Key.NonUSBackSlash) && key != Key.KeypadEnter;
 
         /// <summary>
         /// Removes focus from this <see cref="TextBox"/> if it currently has focus.
@@ -761,17 +718,10 @@ namespace osu.Framework.Graphics.UserInterface
             OnCommit?.Invoke(this, isNew);
         }
 
-        protected override void OnKeyUp(KeyUpEvent e)
-        {
-            if (!e.HasAnyKeyPressed)
-                EndConsumingText();
-
-            base.OnKeyUp(e);
-        }
-
         protected override void OnDrag(DragEvent e)
         {
-            //if (textInput?.ImeActive == true) return true;
+            if (compositionActive)
+                Schedule(resetComposition);
 
             if (doubleClickWord != null)
             {
@@ -811,7 +761,8 @@ namespace osu.Framework.Graphics.UserInterface
 
         protected override bool OnDragStart(DragStartEvent e)
         {
-            if (HasFocus) return true;
+            if (HasFocus)
+                return true;
 
             Vector2 posDiff = e.MouseDownPosition - e.MousePosition;
 
@@ -820,9 +771,11 @@ namespace osu.Framework.Graphics.UserInterface
 
         protected override bool OnDoubleClick(DoubleClickEvent e)
         {
-            if (textInput?.ImeActive == true) return true;
+            if (compositionActive)
+                Schedule(resetComposition);
 
-            if (text.Length == 0) return true;
+            if (text.Length == 0)
+                return true;
 
             if (AllowClipboardExport)
             {
@@ -862,7 +815,8 @@ namespace osu.Framework.Graphics.UserInterface
 
         protected override bool OnMouseDown(MouseDownEvent e)
         {
-            if (textInput?.ImeActive == true) return true;
+            if (compositionActive)
+                Schedule(resetComposition);
 
             selectionStart = selectionEnd = getCharacterClosestTo(e.MousePosition);
 
@@ -878,6 +832,8 @@ namespace osu.Framework.Graphics.UserInterface
 
         protected override void OnFocusLost(FocusLostEvent e)
         {
+            resetComposition();
+
             unbindInput();
 
             caret.Hide();
@@ -913,65 +869,86 @@ namespace osu.Framework.Graphics.UserInterface
             textInput?.Activate(this);
         }
 
-        private void onImeResult()
+        private bool compositionActive;
+
+        private string prevComposition = String.Empty;
+
+        private readonly List<Drawable> compositionDrawables = new List<Drawable>();
+
+        private void resetComposition()
         {
-            //we only succeeded if there is pending data in the textbox
-            if (imeDrawables.Count > 0)
+            compositionActive = false;
+            Schedule(() =>
             {
-                foreach (var d in imeDrawables)
+                clearComposition();
+                textInput?.StopTextComposition();
+            });
+        }
+
+        private void handleTextInsert(string newText)
+        {
+            if (compositionActive)
+            {
+                compositionActive = false;
+                Schedule(() =>
+                {
+                    clearComposition();
+                    OnUserTextAdded(newText);
+                });
+            }
+            else
+            {
+                Schedule(() =>
+                {
+                    insertString(newText);
+                    OnUserTextAdded(newText);
+                });
+            }
+        }
+
+        private void handleTextComposition(string newComposition)
+        {
+            // A new composition is handled on the Input thread (I think) before the rest of the OnKeyDown/OnPressed events.
+            // As such, the composition is set to active first to be able check logic in the other event handlers as appropriate.
+            // The actual text insertion is scheduled to run on the Update thread (I think).
+            compositionActive = true;
+
+            Schedule(() =>
+            {
+                // Adding new text to the current composition doesn't properly diff the compositionDrawables yet.
+                // For now the behaviour is to just fully remove the previous composition and add the updated one.
+                // This does look a little janky in BasicTextBox as the chars animate when removed.
+                // Seems fine for now as a proof of concept.
+                removeCharacters(prevComposition.Length);
+
+                insertString(newComposition, d =>
+                {
+                    d.Colour = Color4.Aqua;
+                    d.Alpha = 0.6f;
+                    compositionDrawables.Add(d);
+                });
+
+                // The composition is no longer active if it's empty
+                compositionActive = !String.IsNullOrEmpty(newComposition);
+                prevComposition = newComposition;
+            });
+        }
+
+        private void clearComposition()
+        {
+            if (compositionDrawables.Count > 0)
+            {
+                foreach (var d in compositionDrawables)
                 {
                     d.Colour = Color4.White;
                     d.FadeTo(1, 200, Easing.Out);
                 }
             }
 
-            imeDrawables.Clear();
+            compositionDrawables.Clear();
+            prevComposition = String.Empty;
         }
 
-        private readonly List<Drawable> imeDrawables = new List<Drawable>();
-
-        private void onImeComposition(string s)
-        {
-            //search for unchanged characters..
-            int matchCount = 0;
-            bool matching = true;
-
-            int searchStart = text.Length - imeDrawables.Count;
-
-            for (int i = 0; i < s.Length; i++)
-            {
-                if (matching && searchStart + i < text.Length && i < s.Length && text[searchStart + i] == s[i])
-                {
-                    matchCount = i + 1;
-                    continue;
-                }
-
-                matching = false;
-            }
-
-            var unmatchingCount = imeDrawables.Count - matchCount;
-
-            if (unmatchingCount > 0)
-            {
-                removeCharacters(unmatchingCount);
-                imeDrawables.RemoveRange(matchCount, unmatchingCount);
-            }
-
-            if (matchCount == s.Length)
-                //in the case of backspacing (or a NOP), we can exit early here.
-                return;
-
-            string insertedText = s.Substring(matchCount);
-
-            insertString(insertedText, d =>
-            {
-                d.Colour = Color4.Aqua;
-                d.Alpha = 0.6f;
-                imeDrawables.Add(d);
-            });
-
-            OnUserTextAdded(insertedText);
-        }
 
         #endregion
     }

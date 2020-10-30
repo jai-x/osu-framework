@@ -11,42 +11,24 @@ namespace osu.Framework.Platform.Sdl
 {
     public class Sdl2TextInput : ITextInputSource
     {
-        private void dbg(string text) => Logger.GetLogger().Debug(text);
+        #region Current ITextInputSource interface
 
-        // todo: IME activation logic
+        public string GetPendingText() => String.Empty;
         public bool ImeActive => false;
         public event Action<string> OnNewImeComposition;
         public event Action<string> OnNewImeResult;
 
-        private readonly Window window;
+        #endregion
 
-        private string pending = String.Empty;
+        #region Proposed ITextInputSource interface
 
-        // hard casting as SDL is only used with the Window class anyway
-        public Sdl2TextInput(IWindow window) => this.window = (Window) window;
+        public event Action<string> TextInsert;
+        public event Action<string> TextComposition;
 
-        public string GetPendingText()
+        public void StopTextComposition()
         {
-            try
-            {
-                return pending;
-            }
-            finally
-            {
-                pending = String.Empty;
-            }
-        }
-
-        private void handleTextInsert(string text)
-        {
-            dbg($"{nameof(Sdl2TextInput)} handleTextInsert: {text}");
-            pending += text;
-        }
-
-        private void handleTextComposition(string text)
-        {
-            // todo: IME compostion logic
-            dbg($"{nameof(Sdl2TextInput)} handleTextComposition: {text}");
+            SDL.SDL_StopTextInput();
+            SDL.SDL_StartTextInput();
         }
 
         public void Activate(object sender)
@@ -62,5 +44,31 @@ namespace osu.Framework.Platform.Sdl
             window.TextInsert -= handleTextInsert;
             window.TextComposition -= handleTextComposition;
         }
+
+        #endregion
+
+        #region Sdl2TextInput implementation
+
+        private void dbg(string msg) => Logger.GetLogger().Debug(msg);
+
+        private readonly Window window;
+
+        // hard casting as SDL is only used with the Window class anyway
+        public Sdl2TextInput(IWindow window) => this.window = (Window) window;
+
+
+        private void handleTextInsert(string text)
+        {
+            dbg($"{nameof(Sdl2TextInput)} handleTextInsert [{text}]");
+            TextInsert?.Invoke(text);
+        }
+
+        private void handleTextComposition(string text)
+        {
+            dbg($"{nameof(Sdl2TextInput)} handleTextComposition [{text}]");
+            TextComposition?.Invoke(text);
+        }
+
+        #endregion
     }
 }
