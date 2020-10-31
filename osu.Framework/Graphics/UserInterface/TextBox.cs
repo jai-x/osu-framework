@@ -154,7 +154,7 @@ namespace osu.Framework.Graphics.UserInterface
                 return false;
 
             if (compositionActive)
-                Schedule(resetComposition);
+                return true;
 
             switch (action.ActionType)
             {
@@ -889,11 +889,11 @@ namespace osu.Framework.Graphics.UserInterface
         {
             if (compositionActive)
             {
-                compositionActive = false;
                 Schedule(() =>
                 {
                     clearComposition();
                     OnUserTextAdded(newText);
+                    compositionActive = false;
                 });
             }
             else
