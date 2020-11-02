@@ -30,33 +30,44 @@ namespace osu.Framework.Platform.Sdl
         {
             dbg($"{nameof(Sdl2TextInput)} StopTextComposition");
 
-            SDL.SDL_StopTextInput();
-            updateTextInputRect();
-            SDL.SDL_StartTextInput();
+            var rect = textInputRect();
+            dbg($"{nameof(Sdl2TextInput)} SetTextInputRect [x: {rect.x}, y: {rect.y}, w:{rect.w}, h:{rect.h}]");
+
+            sdlWindow.ScheduleCommand(() =>
+            {
+                SDL.SDL_StopTextInput();
+                SDL.SDL_StartTextInput();
+                SDL.SDL_SetTextInputRect(ref rect);
+            });
         }
 
         public void Activate(object sender)
         {
             dbg($"{nameof(Sdl2TextInput)} Activate");
 
-            window.TextInsert += handleTextInsert;
-            window.TextComposition += handleTextComposition;
-
+            sdlWindow.TextInsert += handleTextInsert;
+            sdlWindow.TextComposition += handleTextComposition;
             this.sender = sender as Drawable;
-            updateTextInputRect();
-            SDL.SDL_StartTextInput();
+
+            var rect = textInputRect();
+            dbg($"{nameof(Sdl2TextInput)} SetTextInputRect [x: {rect.x}, y: {rect.y}, w:{rect.w}, h:{rect.h}]");
+
+            sdlWindow.ScheduleCommand(() =>
+            {
+                SDL.SDL_StartTextInput();
+                SDL.SDL_SetTextInputRect(ref rect);
+            });
         }
 
         public void Deactivate(object sender)
         {
             dbg($"{nameof(Sdl2TextInput)} Deactivate");
 
-            window.TextInsert -= handleTextInsert;
-            window.TextComposition -= handleTextComposition;
-
+            sdlWindow.TextInsert -= handleTextInsert;
+            sdlWindow.TextComposition -= handleTextComposition;
             this.sender = null;
-            updateTextInputRect();
-            SDL.SDL_StopTextInput();
+
+            sdlWindow.ScheduleCommand(() => SDL.SDL_StopTextInput());
         }
 
         #endregion
@@ -65,10 +76,10 @@ namespace osu.Framework.Platform.Sdl
 
         private void dbg(string msg) => Logger.GetLogger().Debug(msg);
 
-        private readonly Window window;
+        private readonly Sdl2WindowBackend sdlWindow;
 
         // hard casting as SDL is only used with the Window class anyway
-        public Sdl2TextInput(IWindow window) => this.window = (Window) window;
+        public Sdl2TextInput(IWindow window) => sdlWindow = (Sdl2WindowBackend) ((Window) window).WindowBackend;
 
         private void handleTextInsert(string text)
         {
@@ -86,31 +97,19 @@ namespace osu.Framework.Platform.Sdl
 
         private Drawable sender;
 
-        private void updateTextInputRect()
+        private SDL.SDL_Rect textInputRect()
         {
             if (sender == null)
+                return new SDL.SDL_Rect();
+
+            var s_rect = sender.ScreenSpaceDrawQuad;
+            return new SDL.SDL_Rect
             {
-                var rect = new SDL.SDL_Rect();
-
-                dbg($"{nameof(Sdl2TextInput)} updateTextInputRect [x: {rect.x}, y: {rect.y}, w:{rect.w}, h:{rect.h}]");
-
-                SDL.SDL_SetTextInputRect(ref rect);
-            }
-            else
-            {
-                var s_rect = sender.ScreenSpaceDrawQuad;
-                var rect = new SDL.SDL_Rect
-                {
-                    x = (int)s_rect.TopLeft.X,
-                    y = (int)s_rect.TopLeft.Y,
-                    w = (int)s_rect.Width,
-                    h = (int)s_rect.Height
-                };
-
-                dbg($"{nameof(Sdl2TextInput)} updateTextInputRect [x: {rect.x}, y: {rect.y}, w:{rect.w}, h:{rect.h}]");
-
-                SDL.SDL_SetTextInputRect(ref rect);
-            }
+                x = (int)s_rect.TopLeft.X,
+                y = (int)s_rect.TopLeft.Y,
+                w = (int)s_rect.Width,
+                h = (int)s_rect.Height
+            };
         }
 
         #endregion

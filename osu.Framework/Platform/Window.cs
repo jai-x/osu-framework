@@ -22,7 +22,7 @@ namespace osu.Framework.Platform
     /// </summary>
     public abstract class Window : IWindow
     {
-        protected readonly IWindowBackend WindowBackend;
+        public readonly IWindowBackend WindowBackend; // temp
         protected readonly IGraphicsBackend GraphicsBackend;
 
         #region Properties
@@ -237,16 +237,6 @@ namespace osu.Framework.Platform
         /// </summary>
         public event Action<string> DragDrop;
 
-        /// <summary>
-        /// Invoked when the user inserts text via typing or IME.
-        /// </summary>
-        public event Action<string> TextInsert;
-
-        /// <summary>
-        /// Invoked when the user submits a text composition via IME.
-        /// </summary>
-        public event Action<string> TextComposition;
-
         #endregion
 
         #region Event Invocation
@@ -273,8 +263,6 @@ namespace osu.Framework.Platform
         protected virtual void OnJoystickButtonDown(JoystickButton button) => JoystickButtonDown?.Invoke(button);
         protected virtual void OnJoystickButtonUp(JoystickButton button) => JoystickButtonUp?.Invoke(button);
         protected virtual void OnDragDrop(string file) => DragDrop?.Invoke(file);
-        protected virtual void OnTextInsert(string text) => TextInsert?.Invoke(text);
-        protected virtual void OnTextComposition(string text) => TextComposition?.Invoke(text);
 
         #endregion
 
@@ -369,8 +357,6 @@ namespace osu.Framework.Platform
             WindowBackend.MouseMove += OnMouseMove;
             WindowBackend.MouseWheel += OnMouseWheel;
             WindowBackend.DragDrop += OnDragDrop;
-            WindowBackend.TextInsert += OnTextInsert;
-            WindowBackend.TextComposition += OnTextComposition;
 
             WindowBackend.DisplayChanged += d => CurrentDisplay.Value = d;
 

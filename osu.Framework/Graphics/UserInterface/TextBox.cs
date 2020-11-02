@@ -154,7 +154,7 @@ namespace osu.Framework.Graphics.UserInterface
                 return false;
 
             if (compositionActive)
-                return true;
+                resetComposition();
 
             switch (action.ActionType)
             {
@@ -287,7 +287,8 @@ namespace osu.Framework.Graphics.UserInterface
         {
             OnCommit = null;
 
-            unbindInput();
+            if (HasFocus)
+                unbindInput();
 
             base.Dispose(isDisposing);
         }
@@ -721,7 +722,7 @@ namespace osu.Framework.Graphics.UserInterface
         protected override void OnDrag(DragEvent e)
         {
             if (compositionActive)
-                Schedule(resetComposition);
+                resetComposition();
 
             if (doubleClickWord != null)
             {
@@ -772,7 +773,7 @@ namespace osu.Framework.Graphics.UserInterface
         protected override bool OnDoubleClick(DoubleClickEvent e)
         {
             if (compositionActive)
-                Schedule(resetComposition);
+                resetComposition();
 
             if (text.Length == 0)
                 return true;
@@ -816,7 +817,7 @@ namespace osu.Framework.Graphics.UserInterface
         protected override bool OnMouseDown(MouseDownEvent e)
         {
             if (compositionActive)
-                Schedule(resetComposition);
+                resetComposition();
 
             selectionStart = selectionEnd = getCharacterClosestTo(e.MousePosition);
 
@@ -832,8 +833,7 @@ namespace osu.Framework.Graphics.UserInterface
 
         protected override void OnFocusLost(FocusLostEvent e)
         {
-            resetComposition();
-
+            compositionActive = false;
             unbindInput();
 
             caret.Hide();
@@ -878,11 +878,8 @@ namespace osu.Framework.Graphics.UserInterface
         private void resetComposition()
         {
             compositionActive = false;
-            Schedule(() =>
-            {
-                clearComposition();
-                textInput?.StopTextComposition();
-            });
+            textInput?.StopTextComposition();
+            Schedule(clearComposition);
         }
 
         private void handleTextInsert(string newText)

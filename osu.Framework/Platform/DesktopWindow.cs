@@ -67,7 +67,7 @@ namespace osu.Framework.Platform
             }
         }
 
-        protected override IWindowBackend CreateWindowBackend() => new Sdl2WindowBackend();
+        protected override IWindowBackend CreateWindowBackend() => new Sdl2WindowBackend(); // temp
         protected override IGraphicsBackend CreateGraphicsBackend() => new Sdl2GraphicsBackend();
 
         public override void SetupWindow(FrameworkConfigManager config)

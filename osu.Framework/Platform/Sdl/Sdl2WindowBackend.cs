@@ -54,7 +54,7 @@ namespace osu.Framework.Platform.Sdl
             set
             {
                 title = value;
-                commandScheduler.Add(() => SDL.SDL_SetWindowTitle(SdlWindowHandle, $"{value} (SDL)"));
+                ScheduleCommand(() => SDL.SDL_SetWindowTitle(SdlWindowHandle, $"{value} (SDL)"));
             }
         }
 
@@ -66,7 +66,7 @@ namespace osu.Framework.Platform.Sdl
             set
             {
                 visible = value;
-                commandScheduler.Add(() =>
+                ScheduleCommand(() =>
                 {
                     if (value)
                         SDL.SDL_ShowWindow(SdlWindowHandle);
@@ -91,7 +91,7 @@ namespace osu.Framework.Platform.Sdl
             set
             {
                 position = value;
-                commandScheduler.Add(() => SDL.SDL_SetWindowPosition(SdlWindowHandle, value.X, value.Y));
+                ScheduleCommand(() => SDL.SDL_SetWindowPosition(SdlWindowHandle, value.X, value.Y));
             }
         }
 
@@ -110,7 +110,7 @@ namespace osu.Framework.Platform.Sdl
             set
             {
                 size = value;
-                commandScheduler.Add(() => SDL.SDL_SetWindowSize(SdlWindowHandle, value.Width, value.Height));
+                ScheduleCommand(() => SDL.SDL_SetWindowSize(SdlWindowHandle, value.Width, value.Height));
             }
         }
 
@@ -162,7 +162,7 @@ namespace osu.Framework.Platform.Sdl
             set
             {
                 cursorVisible = value;
-                commandScheduler.Add(() => SDL.SDL_ShowCursor(value ? SDL.SDL_ENABLE : SDL.SDL_DISABLE));
+                ScheduleCommand(() => SDL.SDL_ShowCursor(value ? SDL.SDL_ENABLE : SDL.SDL_DISABLE));
             }
         }
 
@@ -174,7 +174,7 @@ namespace osu.Framework.Platform.Sdl
             set
             {
                 cursorConfined = value;
-                commandScheduler.Add(() => SDL.SDL_SetWindowGrab(SdlWindowHandle, value ? SDL.SDL_bool.SDL_TRUE : SDL.SDL_bool.SDL_FALSE));
+                ScheduleCommand(() => SDL.SDL_SetWindowGrab(SdlWindowHandle, value ? SDL.SDL_bool.SDL_TRUE : SDL.SDL_bool.SDL_FALSE));
             }
         }
 
@@ -192,7 +192,7 @@ namespace osu.Framework.Platform.Sdl
                     return;
                 }
 
-                commandScheduler.Add(() =>
+                ScheduleCommand(() =>
                 {
                     switch (value)
                     {
@@ -266,7 +266,7 @@ namespace osu.Framework.Platform.Sdl
             {
                 currentDisplayMode = value;
 
-                commandScheduler.Add(() =>
+                ScheduleCommand(() =>
                 {
                     var closest = closestDisplayMode(value);
                     var wasFullscreen = windowFlags.ToWindowState() == WindowState.Fullscreen;
@@ -462,7 +462,7 @@ namespace osu.Framework.Platform.Sdl
             SDL.SDL_Quit();
         }
 
-        public override void Close() => commandScheduler.Add(() => Exists = false);
+        public override void Close() => ScheduleCommand(() => Exists = false);
 
         public override void RequestClose() => ScheduleEvent(OnCloseRequested);
 
@@ -471,7 +471,7 @@ namespace osu.Framework.Platform.Sdl
             var data = image.GetPixelSpan().ToArray();
             var imageSize = image.Size();
 
-            commandScheduler.Add(() =>
+            ScheduleCommand(() =>
             {
                 IntPtr surface;
                 fixed (Rgba32* ptr = data)
@@ -505,7 +505,9 @@ namespace osu.Framework.Platform.Sdl
         /// Adds an <see cref="Action"/> to the <see cref="Scheduler"/> expected to handle event callbacks.
         /// </summary>
         /// <param name="action">The <see cref="Action"/> to execute.</param>
-        protected void ScheduleEvent(Action action) => eventScheduler.Add(action);
+        public void ScheduleEvent(Action action) => eventScheduler.Add(action);
+
+        public void ScheduleCommand(Action action) => commandScheduler.Add(action); // temp
 
         private void processEvents()
         {
